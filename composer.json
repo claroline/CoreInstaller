@@ -1,0 +1,15 @@
+{
+    "name": "claroline/core-installer",
+    "type": "composer-installer",
+    "require": {
+        "claroline/installation-bundle": "dev-master"
+    },
+    "autoload": {
+        "psr-0": { "Claroline\\CoreInstaller": "" }
+    },
+    "target-dir": "Claroline/CoreInstaller",
+    "extra": {
+        "class": "Claroline\\CoreInstaller\\Installer"
+    }
+}
+
