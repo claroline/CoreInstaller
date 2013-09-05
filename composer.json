@@ -2,7 +2,8 @@
     "name": "claroline/core-installer",
     "type": "composer-installer",
     "require": {
-        "claroline/installation-bundle": "dev-master"
+        "claroline/installation-bundle": "dev-master",
+        "claroline/bundle-recorder": "dev-master"
     },
     "autoload": {
         "psr-0": { "Claroline\\CoreInstaller": "" }

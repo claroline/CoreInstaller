@@ -7,7 +7,9 @@ use Composer\IO\IOInterface;
 use Composer\Composer;
 use Composer\Repository\InstalledRepositoryInterface;
 use Composer\Package\PackageInterface;
+use Composer\Autoload\ClassLoader;
 use Symfony\Component\HttpKernel\KernelInterface;
+use Claroline\BundleRecorder\Recorder;
 
 /**
  * Composer custom installer for Claroline core bundles.
@@ -18,6 +20,11 @@ class Installer extends LibraryInstaller
      * @var \Symfony\Component\HttpKernel\KernelInterface
      */
     private $kernel;
+
+    /**
+     * @var \Claroline\BundleRecorder\Recorder
+     */
+    private $recorder;
 
     /**
      * Constructor.
@@ -31,11 +38,13 @@ class Installer extends LibraryInstaller
         IOInterface $io,
         Composer $composer,
         $type = 'library',
-        KernelInterface $kernel = null
+        KernelInterface $kernel = null,
+        Recorder $recorder = null
     )
     {
         parent::__construct($io, $composer, $type);
         $this->kernel = $kernel;
+        $this->recorder = $recorder;
     }
 
     /**
@@ -51,21 +60,22 @@ class Installer extends LibraryInstaller
      */
     public function install(InstalledRepositoryInterface $repo, PackageInterface $package)
     {
-        $this->initialize();
         $this->installPackage($repo, $package);
-        $properties = $this->resolvePackageName($package->getName());
+        $bundle = $this->getBundle($package->getName());
 
         try {
             $this->io->write("  - Installing <info>{$package->getName()}</info> as a Claroline core bundle");
-            $this->getBaseInstaller()->install($properties['fqcn'], $properties['path']);
+            $this->getBundleRecorder()->addBundlesFrom($package);
+            $this->initApplicationKernel();
+            $this->getBaseInstaller()->install($bundle);
         } catch (\Exception $ex) {
-            $this->uninstallPackage($repo, $package);
-
-            throw new InstallationException(
-                "An exception with message '{$ex->getMessage()}' occured during "
-                    . "{$package->getName()} installation. The package has been "
-                    . 'removed. Installation is aborting.'
+            $this->getBundleRecorder()->removeBundlesFrom($package);
+            //$this->uninstallPackage($repo, $package);
+            $this->io->write(
+                "<error>An exception has been thrown during {$package->getName()} installation. "
+                . "The package has been removed. Installation is aborting.</error>"
             );
+            throw $ex;
         }
     }
 
@@ -74,10 +84,11 @@ class Installer extends LibraryInstaller
      */
     public function uninstall(InstalledRepositoryInterface $repo, PackageInterface $package)
     {
-        $this->initialize();
-        $properties = $this->resolvePackageName($package->getName());
+        $this->initApplicationKernel();
+        $bundle = $this->getBundle($package->getName());
         $this->io->write("  - Uninstalling Claroline core bundle <info>{$package->getName()}</info>");
-        $this->getBaseInstaller()->uninstall($properties['fqcn']);
+        $this->getBaseInstaller()->uninstall($bundle);
+        $this->getBundleRecorder()->removeBundlesFrom($package);
         $this->uninstallPackage($repo, $package);
     }
 
@@ -86,9 +97,9 @@ class Installer extends LibraryInstaller
      */
     public function update(InstalledRepositoryInterface $repo, PackageInterface $initial, PackageInterface $target)
     {
-        $this->initialize();
+        $this->initApplicationKernel();
         $baseInstaller = $this->getBaseInstaller();
-        $properties = $this->resolvePackageName($initial->getName());
+        $bundle = $this->getBundle($package->getName());
         $initialDbVersion = $this->getDatabaseVersion($initial);
         $targetDbVersion = $this->getDatabaseVersion($target);
 
@@ -97,10 +108,10 @@ class Installer extends LibraryInstaller
         } elseif (false === $initialDbVersion || $initialDbVersion < $targetDbVersion) {
             $this->updatePackage($repo, $initial, $target);
             $this->io->write("  - Migrating <info>{$target->getName()}</info> to db version '{$targetDbVersion}'");
-            $baseInstaller->migrate($properties['fqcn'], $targetDbVersion);
+            $baseInstaller->migrate($bundle, $targetDbVersion);
         } elseif ($initialDbVersion > $targetDbVersion) {
             $this->io->write("  - Migrating <info>{$target->getName()}</info> to db version '{$targetDbVersion}'");
-            $baseInstaller->migrate($properties['fqcn'], $targetDbVersion);
+            $baseInstaller->migrate($bundle, $targetDbVersion);
             $this->updatePackage($repo, $initial, $target);
         }
     }
@@ -139,7 +150,7 @@ class Installer extends LibraryInstaller
         parent::update($repo, $initial, $target);
     }
 
-    private function initialize()
+    private function initApplicationKernel()
     {
         if ($this->kernel === null) {
             require_once $this->vendorDir . '/../app/AppKernel.php';
@@ -148,7 +159,16 @@ class Installer extends LibraryInstaller
         }
     }
 
-    private function resolvePackageName($packageName)
+    private function getBundleRecorder()
+    {
+        if ($this->recorder === null) {
+            $this->recorder = new Recorder($this->composer);
+        }
+
+        return $this->recorder;
+    }
+
+    private function getBundle($packageName)
     {
         $parts = explode('/', $packageName);
         $vendor = ucfirst($parts[0]);
@@ -161,9 +181,14 @@ class Installer extends LibraryInstaller
 
         $namespace = "{$vendor}\\{$bundle}";
         $fqcn = "{$namespace}\\{$vendor}{$bundle}";
-        $path = "{$this->vendorDir}/{$packageName}/{$vendor}/{$bundle}/{$vendor}{$bundle}.php";
+        $packagePath = "{$this->vendorDir}/{$packageName}";
+        $path = "{$packagePath}/{$vendor}/{$bundle}/{$vendor}{$bundle}.php";
 
-        return array('namespace' => $namespace, 'fqcn' => $fqcn, 'path' => $path);
+        $loader = new ClassLoader();
+        $loader->add($namespace, $packagePath);
+        $loader->register();
+
+        return new $fqcn;
     }
 
     private function getBaseInstaller()
