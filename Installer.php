@@ -19,7 +19,7 @@ class Installer extends LibraryInstaller
     /**
      * @var \Symfony\Component\HttpKernel\KernelInterface
      */
-    private $kernel;
+    protected $kernel;
 
     /**
      * @var \Claroline\BundleRecorder\Recorder
@@ -70,7 +70,7 @@ class Installer extends LibraryInstaller
             $this->getBaseInstaller()->install($bundle);
         } catch (\Exception $ex) {
             $this->getBundleRecorder()->removeBundlesFrom($package);
-            //$this->uninstallPackage($repo, $package);
+            $this->uninstallPackage($repo, $package);
             $this->io->write(
                 "<error>An exception has been thrown during {$package->getName()} installation. "
                 . "The package has been removed. Installation is aborting.</error>"
