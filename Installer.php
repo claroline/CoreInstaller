@@ -33,6 +33,7 @@ class Installer extends LibraryInstaller
      * @param \Composer\Composer                            $composer
      * @param string                                        $type
      * @param \Symfony\Component\HttpKernel\KernelInterface $kernel
+     * @param \Claroline\BundleRecorder\Recorder            $recorder
      */
     public function __construct(
         IOInterface $io,
