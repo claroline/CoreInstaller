@@ -66,11 +66,11 @@ class Installer extends LibraryInstaller
 
         try {
             $this->io->write("  - Installing <info>{$package->getName()}</info> as a Claroline core bundle");
-            $this->getBundleRecorder()->addBundlesFrom($package);
+            $recorder = $this->getBundleRecorder();
+            $recorder->addBundles($recorder->detectBundles($package));
             $this->initApplicationKernel();
             $this->getBaseInstaller()->install($bundle);
         } catch (\Exception $ex) {
-            $this->getBundleRecorder()->removeBundlesFrom($package);
             $this->uninstallPackage($repo, $package);
             $this->io->write(
                 "<error>An exception has been thrown during {$package->getName()} installation. "
@@ -89,7 +89,6 @@ class Installer extends LibraryInstaller
         $bundle = $this->getBundle($package->getName());
         $this->io->write("  - Uninstalling Claroline core bundle <info>{$package->getName()}</info>");
         $this->getBaseInstaller()->uninstall($bundle);
-        $this->getBundleRecorder()->removeBundlesFrom($package);
         $this->uninstallPackage($repo, $package);
     }
 
@@ -183,7 +182,6 @@ class Installer extends LibraryInstaller
         $namespace = "{$vendor}\\{$bundle}";
         $fqcn = "{$namespace}\\{$vendor}{$bundle}";
         $packagePath = "{$this->vendorDir}/{$packageName}";
-        $path = "{$packagePath}/{$vendor}/{$bundle}/{$vendor}{$bundle}.php";
 
         $loader = new ClassLoader();
         $loader->add($namespace, $packagePath);
