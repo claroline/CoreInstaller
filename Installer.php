@@ -9,7 +9,6 @@ use Composer\Repository\InstalledRepositoryInterface;
 use Composer\Package\PackageInterface;
 use Composer\Autoload\ClassLoader;
 use Symfony\Component\HttpKernel\KernelInterface;
-use Claroline\BundleRecorder\Recorder;
 
 /**
  * Composer custom installer for Claroline core bundles.
@@ -22,30 +21,22 @@ class Installer extends LibraryInstaller
     protected $kernel;
 
     /**
-     * @var \Claroline\BundleRecorder\Recorder
-     */
-    private $recorder;
-
-    /**
      * Constructor.
      *
      * @param \Composer\IO\IOInterface                      $io
      * @param \Composer\Composer                            $composer
      * @param string                                        $type
      * @param \Symfony\Component\HttpKernel\KernelInterface $kernel
-     * @param \Claroline\BundleRecorder\Recorder            $recorder
      */
     public function __construct(
         IOInterface $io,
         Composer $composer,
         $type = 'library',
-        KernelInterface $kernel = null,
-        Recorder $recorder = null
+        KernelInterface $kernel = null
     )
     {
         parent::__construct($io, $composer, $type);
         $this->kernel = $kernel;
-        $this->recorder = $recorder;
     }
 
     /**
@@ -66,9 +57,6 @@ class Installer extends LibraryInstaller
 
         try {
             $this->io->write("  - Installing <info>{$package->getName()}</info> as a Claroline core bundle");
-            $recorder = $this->getBundleRecorder();
-            $recorder->addBundles($recorder->detectBundles($package));
-            $this->initApplicationKernel();
             $this->getBaseInstaller()->install($bundle);
         } catch (\Exception $ex) {
             $this->uninstallPackage($repo, $package);
@@ -85,9 +73,8 @@ class Installer extends LibraryInstaller
      */
     public function uninstall(InstalledRepositoryInterface $repo, PackageInterface $package)
     {
-        $this->initApplicationKernel();
-        $bundle = $this->getBundle($package->getName());
         $this->io->write("  - Uninstalling Claroline core bundle <info>{$package->getName()}</info>");
+        $bundle = $this->getBundle($package->getName());
         $this->getBaseInstaller()->uninstall($bundle);
         $this->uninstallPackage($repo, $package);
     }
@@ -97,9 +84,8 @@ class Installer extends LibraryInstaller
      */
     public function update(InstalledRepositoryInterface $repo, PackageInterface $initial, PackageInterface $target)
     {
-        $this->initApplicationKernel();
-        $baseInstaller = $this->getBaseInstaller();
         $bundle = $this->getBundle($package->getName());
+        $baseInstaller = $this->getBaseInstaller();
         $initialDbVersion = $this->getDatabaseVersion($initial);
         $targetDbVersion = $this->getDatabaseVersion($target);
 
@@ -150,24 +136,6 @@ class Installer extends LibraryInstaller
         parent::update($repo, $initial, $target);
     }
 
-    private function initApplicationKernel()
-    {
-        if ($this->kernel === null) {
-            require_once $this->vendorDir . '/../app/AppKernel.php';
-            $this->kernel = new \AppKernel('dev', true);
-            $this->kernel->boot();
-        }
-    }
-
-    private function getBundleRecorder()
-    {
-        if ($this->recorder === null) {
-            $this->recorder = new Recorder($this->composer);
-        }
-
-        return $this->recorder;
-    }
-
     private function getBundle($packageName)
     {
         $parts = explode('/', $packageName);
@@ -192,6 +160,12 @@ class Installer extends LibraryInstaller
 
     private function getBaseInstaller()
     {
+        if ($this->kernel === null) {
+            require_once $this->vendorDir . '/../app/AppKernel.php';
+            $this->kernel = new \AppKernel('dev', true);
+            $this->kernel->boot();
+        }
+
         $baseInstaller = $this->kernel->getContainer()->get('claroline.installation.manager');
         $io = $this->io;
         $baseInstaller->setLogger(function ($message) use ($io) {
