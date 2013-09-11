@@ -162,7 +162,7 @@ class Installer extends LibraryInstaller
     {
         if ($this->kernel === null) {
             require_once $this->vendorDir . '/../app/AppKernel.php';
-            $this->kernel = new \AppKernel('dev', true);
+            $this->kernel = new \AppKernel('dev', false);
             $this->kernel->boot();
         }
 
