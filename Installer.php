@@ -165,27 +165,19 @@ class Installer extends LibraryInstaller
 
     private function getBaseInstaller()
     {
-        $kernel = $this->getKernel();
-        $baseInstaller = $kernel->getContainer()->get('claroline.installation.manager');
+        if ($this->kernel === null) {
+            require_once $this->vendorDir . '/../app/AppKernel.php';
+            $this->kernel = new \AppKernel('dev', false);
+            $this->kernel->boot();
+        }
+
+        $baseInstaller = $this->kernel->getContainer()->get('claroline.installation.manager');
         $io = $this->io;
         $baseInstaller->setLogger(function ($message) use ($io) {
             $io->write("    {$message}");
         });
 
         return $baseInstaller;
-    }
-
-    private function getKernel()
-    {
-        if ($this->kernel === null) {
-            require_once $this->vendorDir . '/../app/AppKernel.php';
-            $kernel = new \AppKernel('tmp' . time(), false);
-            $kernel->boot();
-
-            return $kernel;
-        }
-
-        return $this->kernel;
     }
 
     private function getDatabaseVersion(PackageInterface $package)
