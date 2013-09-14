@@ -10,6 +10,7 @@ use Composer\Package\PackageInterface;
 use Composer\Autoload\ClassLoader;
 use Doctrine\Common\Annotations\AnnotationRegistry;
 use Symfony\Component\HttpKernel\KernelInterface;
+use Claroline\InstallationBundle\Bundle\BundleVersion;
 
 /**
  * Composer custom installer for Claroline core bundles.
@@ -85,20 +86,27 @@ class Installer extends LibraryInstaller
      */
     public function update(InstalledRepositoryInterface $repo, PackageInterface $initial, PackageInterface $target)
     {
-        $bundle = $this->getBundle($package->getName());
         $baseInstaller = $this->getBaseInstaller();
-        $initialDbVersion = $this->getDatabaseVersion($initial);
-        $targetDbVersion = $this->getDatabaseVersion($target);
+        $bundle = $this->getBundle($package->getName());
+        $initialVersion = new BundleVersion(
+            $initial->getVersion(),
+            $initial->getPrettyVersion(),
+            $this->getDatabaseVersion($initial)
+        );
+        $targetVersion = new BundleVersion(
+            $target->getVersion(),
+            $target->getPrettyVersion(),
+            $this->getDatabaseVersion($target)
+        );
+        $msg = "  - Migrating <info>{$initial->getName()}</info> to version '{$target->getPrettyVersion()}'";
 
-        if (false === $targetDbVersion || $initialDbVersion === $targetDbVersion) {
+        if ($initial->getVersion() < $target->getVersion()) {
             $this->updatePackage($repo, $initial, $target);
-        } elseif (false === $initialDbVersion || $initialDbVersion < $targetDbVersion) {
-            $this->updatePackage($repo, $initial, $target);
-            $this->io->write("  - Migrating <info>{$target->getName()}</info> to db version '{$targetDbVersion}'");
-            $baseInstaller->migrate($bundle, $targetDbVersion);
-        } elseif ($initialDbVersion > $targetDbVersion) {
-            $this->io->write("  - Migrating <info>{$target->getName()}</info> to db version '{$targetDbVersion}'");
-            $baseInstaller->migrate($bundle, $targetDbVersion);
+            $this->io->write($msg);
+            $baseInstaller->update($bundle, $initialVersion, $targetVersion);
+        } else {
+            $this->io->write($msg);
+            $baseInstaller->update($bundle, $initialVersion, $targetVersion);
             $this->updatePackage($repo, $initial, $target);
         }
     }
