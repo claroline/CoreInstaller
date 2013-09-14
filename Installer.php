@@ -8,6 +8,7 @@ use Composer\Composer;
 use Composer\Repository\InstalledRepositoryInterface;
 use Composer\Package\PackageInterface;
 use Composer\Autoload\ClassLoader;
+use Doctrine\Common\Annotations\AnnotationRegistry;
 use Symfony\Component\HttpKernel\KernelInterface;
 
 /**
@@ -154,6 +155,10 @@ class Installer extends LibraryInstaller
         $loader = new ClassLoader();
         $loader->add($namespace, $packagePath);
         $loader->register();
+
+        if (class_exists('Doctrine\Common\Annotations\AnnotationRegistry')) {
+            AnnotationRegistry::registerLoader(array($loader, 'loadClass'));
+        }
 
         return new $fqcn;
     }
