@@ -87,7 +87,7 @@ class Installer extends LibraryInstaller
     public function update(InstalledRepositoryInterface $repo, PackageInterface $initial, PackageInterface $target)
     {
         $baseInstaller = $this->getBaseInstaller();
-        $bundle = $this->getBundle($package->getName());
+        $bundle = $this->getBundle($initial->getName());
         $initialVersion = new BundleVersion(
             $initial->getVersion(),
             $initial->getPrettyVersion(),
