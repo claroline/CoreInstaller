@@ -100,7 +100,11 @@ class Installer extends LibraryInstaller
         );
         $msg = "  - Migrating <info>{$initial->getName()}</info> to version '{$target->getPrettyVersion()}'";
 
-        if ($initial->getVersion() < $target->getVersion()) {
+        // versions can be equals if a package is referred to using versions
+        // like "dev-master": in that case we can't know (or can we ?) what's
+        // the direction of the update (upgrade/downgrade), so the up direction
+        // is chosen, as it's the more likely update move.
+        if (version_compare($initial->getVersion(), $target->getVersion(), '<=')) {
             $this->updatePackage($repo, $initial, $target);
             $this->io->write($msg);
             $baseInstaller->update($bundle, $initialVersion, $targetVersion);
