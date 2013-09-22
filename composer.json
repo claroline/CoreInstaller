@@ -3,7 +3,7 @@
     "type": "composer-installer",
     "require": {
         "claroline/installation-bundle": "~2.0",
-        "claroline/bundle-recorder": "~1.0"
+        "claroline/bundle-recorder": "~1.1"
     },
     "autoload": {
         "psr-0": { "Claroline\\CoreInstaller": "" }
