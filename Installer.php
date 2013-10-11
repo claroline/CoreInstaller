@@ -14,6 +14,6 @@ class Installer extends LibraryInstaller
      */
     public function supports($packageType)
     {
-        return $packageType === 'claroline-core';
+        return false;
     }
 }
